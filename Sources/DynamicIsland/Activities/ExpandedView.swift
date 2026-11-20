@@ -36,7 +36,7 @@ private struct ExpandedHeader: View {
     @Environment(\.ui) private var ui
 
     var body: some View {
-        let earWidth = max(0, (model.expandedWidth - model.geometry.notchWidth) / 2 - ui(Layout.sidePadding))
+        let earWidth = max(0, (model.expandedWidth - model.geometry.earGap) / 2 - ui(Layout.sidePadding))
         HStack(spacing: 0) {
             leading
                 .frame(width: earWidth, alignment: .leading)

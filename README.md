@@ -16,8 +16,11 @@ notch; on other displays it draws its own.
 - **Timer** – start one from the island or the menu bar. With music playing
   as well, the island shows both: album art on the left, the countdown on the
   right.
-- **Alerts** – charging, low battery (20%, 10%, 5%), volume changes and
-  Bluetooth devices connecting or disconnecting (AirPods, keyboards, mice).
+- **Charging** – while the Mac charges, the island shows the power coming in
+  and the time until full. Music and the timer take priority.
+- **Alerts** – charging, low battery (20%, 10%, 5%), volume and brightness
+  changes, and Bluetooth devices connecting or disconnecting (AirPods,
+  keyboards, mice).
 
 Hover or click the notch to open it. Right-click it for settings.
 
@@ -111,7 +114,8 @@ Dynamic Island แบบ iPhone สำหรับ MacBook ที่มีรอ
 - แสดงเพลงที่กำลังเล่น (Apple Music, Spotify, YouTube ในเบราว์เซอร์ ฯลฯ)
   ชี้เมาส์ที่รอยบากเพื่อเปิดตัวควบคุมเพลง เลื่อนเวลาเพลงได้
 - ตั้งเวลาได้จากตัวเกาะหรือไอคอนบนแถบเมนู ถ้าเปิดเพลงอยู่ด้วย จะเห็นปกอัลบั้มทางซ้ายและเวลาที่เหลือทางขวาในเกาะเดียวกัน
-- แจ้งเตือนตอนเสียบสายชาร์จ แบตใกล้หมด ปรับเสียง และตอนเชื่อมต่อ AirPods หรืออุปกรณ์บลูทูธ
+- ระหว่างชาร์จ แสดงกำลังไฟที่เข้า (W) และเวลาที่เหลือจนแบตเต็ม
+- แจ้งเตือนตอนเสียบสายชาร์จ แบตใกล้หมด ปรับเสียง ปรับแสงหน้าจอ และตอนเชื่อมต่อ AirPods หรืออุปกรณ์บลูทูธ
 - กินเครื่องน้อยมาก ตอนว่าง CPU 0% ใช้แรมราว 15–20 MB
 
 **วิธีติดตั้ง**

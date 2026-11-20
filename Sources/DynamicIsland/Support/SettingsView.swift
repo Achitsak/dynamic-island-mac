@@ -28,10 +28,12 @@ struct SettingsView: View {
                 Toggle("Now Playing", isOn: $settings.showNowPlaying)
                 Toggle("Hide music a few seconds after pausing", isOn: $settings.hideMusicWhenPaused)
                     .disabled(!settings.showNowPlaying)
+                Toggle("Charging (time to full, watts)", isOn: $settings.showChargingActivity)
             }
 
             Section("Alerts") {
                 Toggle("Volume changes", isOn: $settings.showVolumeHUD)
+                Toggle("Brightness changes", isOn: $settings.showBrightnessHUD)
                 Toggle("Charging", isOn: $settings.showChargingHUD)
                 Toggle("Low battery", isOn: $settings.showLowBatteryHUD)
                 Toggle("Bluetooth devices (AirPods, keyboards…)", isOn: $settings.showBluetoothHUD)

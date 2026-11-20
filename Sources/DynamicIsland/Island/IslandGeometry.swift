@@ -39,17 +39,22 @@ struct IslandGeometry: Equatable {
             hasNotch = true
             notchHeight = screen.safeAreaInsets.top
             notchWidth = max(right.minX - left.maxX, notchHeight * 4)
-            // Follow the notch, but only partly: at "More Space" scalings the notch is
-            // huge in points while the rest of the UI stays small.
-            unit = min(max(notchHeight / 32, 0.9), 1.25) * scale
+            // Follow the notch, so the island keeps the same physical size at any
+            // resolution (at 1x the notch is 56pt tall instead of ~32).
+            unit = min(max(notchHeight / 32, 0.9), 2) * scale
         } else {
             hasNotch = false
             let menuBar = frame.maxY - screen.visibleFrame.maxY
-            notchHeight = menuBar > 4 ? menuBar : NSStatusBar.system.thickness
+            // Mid-reconfiguration the visible frame can lag behind the frame.
+            notchHeight = (4...60).contains(menuBar) ? menuBar : NSStatusBar.system.thickness
             unit = min(max(notchHeight / 28, 0.8), 3) * scale
             notchWidth = 170 * unit
         }
     }
+
+    /// Space between the left and right ears: the notch plus a margin, so nothing
+    /// is drawn where the notch would hide it.
+    var earGap: CGFloat { notchWidth + 2 * Layout.notchMargin * unit }
 }
 
 /// `ui(14)` → 14 points scaled to the current display.
@@ -71,11 +76,14 @@ extension EnvironmentValues {
 
 /// Base layout metrics (multiplied by `IslandGeometry.unit`).
 enum Layout {
-    // Compact "ears" on each side of the notch.
+    // Compact "ears" on each side of the notch: outer padding + content + notchMargin.
+    static let notchMargin: CGFloat = 5
     static let musicEar: CGFloat = 40
-    static let timerEar: CGFloat = 54
+    static let timerEar: CGFloat = 60
+    static let musicTimerEar: CGFloat = 72
+    static let chargingEar: CGFloat = 68
     static let volumeEar: CGFloat = 86
-    static let batteryEar: CGFloat = 76
+    static let batteryEar: CGFloat = 84
     static let bannerEar: CGFloat = 66
     static let bannerExtra: CGFloat = 28
 

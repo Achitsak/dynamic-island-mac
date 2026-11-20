@@ -16,10 +16,17 @@ final class BatteryService {
     private(set) var isPluggedIn = false
     private(set) var hasBattery = false
     private(set) var isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+    /// Minutes until full; nil while macOS is still estimating or when not charging.
+    private(set) var minutesToFull: Int?
+    /// Power coming in from the charger.
+    private(set) var inputWatts: Int?
 
     @ObservationIgnored var onEvent: ((Event) -> Void)?
     @ObservationIgnored private var source: CFRunLoopSource?
     @ObservationIgnored private var started = false
+    @ObservationIgnored private let smartBattery = IOServiceGetMatchingService(
+        kIOMainPortDefault, IOServiceMatching("AppleSmartBattery")
+    )
 
     var tint: Color {
         if isPluggedIn { return .islandGreen }
@@ -66,6 +73,12 @@ final class BatteryService {
             let newLevel = Int((Double(current) / Double(maximum) * 100).rounded())
             let pluggedIn = description[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue
             let charging = description[kIOPSIsChargingKey] as? Bool ?? false
+            // macOS holds back its estimate for a few minutes after plugging in; the
+            // battery's own average is usually ready well before that.
+            let toFull = charging
+                ? Self.validMinutes(description[kIOPSTimeToFullChargeKey] as? Int) ?? Self.validMinutes(batteryProperty("AvgTimeToFull"))
+                : nil
+            let watts = pluggedIn ? readInputWatts() : nil
 
             let oldLevel = level
             let wasPluggedIn = isPluggedIn
@@ -73,6 +86,8 @@ final class BatteryService {
             if newLevel != level { level = newLevel }
             if charging != isCharging { isCharging = charging }
             if pluggedIn != isPluggedIn { isPluggedIn = pluggedIn }
+            if toFull != minutesToFull { minutesToFull = toFull }
+            if watts != inputWatts { inputWatts = watts }
 
             guard notify else { return }
             if pluggedIn && !wasPluggedIn { onEvent?(.pluggedIn) }
@@ -82,5 +97,33 @@ final class BatteryService {
             }
             return
         }
+    }
+
+    /// What the system is drawing from the charger right now (Apple silicon reports
+    /// this), otherwise what the charger negotiated.
+    private func readInputWatts() -> Int? {
+        if let telemetry: [String: Any] = batteryProperty("PowerTelemetryData"),
+           let milliwatts = telemetry["SystemPowerIn"] as? Int, milliwatts > 0 {
+            return Int((Double(milliwatts) / 1000).rounded())
+        }
+        let adapter = IOPSCopyExternalPowerAdapterDetails()?.takeRetainedValue() as? [String: Any]
+        return (adapter?[kIOPSPowerAdapterWattsKey] as? Int).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    private func batteryProperty<T>(_ key: String) -> T? {
+        guard smartBattery != 0 else { return nil }
+        return IORegistryEntryCreateCFProperty(smartBattery, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? T
+    }
+
+    /// -1 means "still estimating" and 65535 "unknown".
+    private static func validMinutes(_ minutes: Int?) -> Int? {
+        minutes.flatMap { (1..<65535).contains($0) ? $0 : nil }
+    }
+
+    /// "1h 20m", "45m".
+    static func formatDuration(minutes: Int) -> String {
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(rest)m" }
+        return rest == 0 ? "\(hours)h" : "\(hours)h \(rest)m"
     }
 }

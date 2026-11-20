@@ -13,8 +13,10 @@ final class AppSettings {
 
     var showNowPlaying: Bool { didSet { save(showNowPlaying, "showNowPlaying") } }
     var hideMusicWhenPaused: Bool { didSet { save(hideMusicWhenPaused, "hideMusicWhenPaused") } }
+    var showChargingActivity: Bool { didSet { save(showChargingActivity, "showChargingActivity") } }
 
     var showVolumeHUD: Bool { didSet { save(showVolumeHUD, "showVolumeHUD") } }
+    var showBrightnessHUD: Bool { didSet { save(showBrightnessHUD, "showBrightnessHUD") } }
     var showChargingHUD: Bool { didSet { save(showChargingHUD, "showChargingHUD") } }
     var showLowBatteryHUD: Bool { didSet { save(showLowBatteryHUD, "showLowBatteryHUD") } }
     var showBluetoothHUD: Bool { didSet { save(showBluetoothHUD, "showBluetoothHUD") } }
@@ -32,7 +34,9 @@ final class AppSettings {
             "hapticFeedback": true,
             "showNowPlaying": true,
             "hideMusicWhenPaused": true,
+            "showChargingActivity": true,
             "showVolumeHUD": true,
+            "showBrightnessHUD": true,
             "showChargingHUD": true,
             "showLowBatteryHUD": true,
             "showBluetoothHUD": true,
@@ -46,7 +50,9 @@ final class AppSettings {
         hapticFeedback = d.bool(forKey: "hapticFeedback")
         showNowPlaying = d.bool(forKey: "showNowPlaying")
         hideMusicWhenPaused = d.bool(forKey: "hideMusicWhenPaused")
+        showChargingActivity = d.bool(forKey: "showChargingActivity")
         showVolumeHUD = d.bool(forKey: "showVolumeHUD")
+        showBrightnessHUD = d.bool(forKey: "showBrightnessHUD")
         showChargingHUD = d.bool(forKey: "showChargingHUD")
         showLowBatteryHUD = d.bool(forKey: "showLowBatteryHUD")
         showBluetoothHUD = d.bool(forKey: "showBluetoothHUD")

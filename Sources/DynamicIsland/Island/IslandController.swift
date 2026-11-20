@@ -52,6 +52,7 @@ final class IslandController {
     private var monitors: [Any] = []
     /// Cached: the global mouse monitor fires on every pointer move on screen.
     private var hitRect = CGRect.zero
+    private var settleTask: Task<Void, Never>?
 
     init(model: IslandModel) {
         self.model = model
@@ -70,7 +71,12 @@ final class IslandController {
     func relayout() {
         guard let screen = targetScreen() else { return }
         let geometry = IslandGeometry(screen: screen, sizeScale: model.settings.sizeScale)
-        if model.geometry != geometry { model.geometry = geometry }
+        if model.geometry != geometry {
+            // Snap rather than spring: the window resizes at once and would clip the animation.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { model.geometry = geometry }
+        }
 
         // Sized for the largest state; a smaller window is cheaper to composite.
         let u = geometry.unit
@@ -132,11 +138,28 @@ final class IslandController {
 
     // MARK: Screens & spaces
 
+    /// Connecting a display or changing the resolution sends a burst of notifications,
+    /// and NSScreen can report half-updated values in between (the system may also still
+    /// move windows around). Following each step makes the island jump, so lay out once
+    /// the burst is over, and again a little later to be sure.
+    private func screensChanged() {
+        model.ignoreSystemBrightnessChanges()
+        settleTask?.cancel()
+        settleTask = Task { [weak self] in
+            for delay in [0.3, 1.0] {
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled, let self else { return }
+                self.relayout()
+                self.panel.orderFrontRegardless()
+            }
+        }
+    }
+
     private func observeEnvironment() {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.relayout() }
+            MainActor.assumeIsolated { self?.screensChanged() }
         }
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main

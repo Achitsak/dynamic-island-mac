@@ -5,26 +5,19 @@ struct HUDView: View {
     let model: IslandModel
     @Environment(\.ui) private var ui
 
-    private var notchGap: CGFloat { model.geometry.notchWidth - ui(10) }
+    private var notchGap: CGFloat { model.geometry.earGap }
 
     var body: some View {
         switch hud {
         case .volume(let level, let muted):
-            let percent = muted ? 0 : Int((level * 100).rounded())
-            ears {
-                HStack(spacing: ui(6)) {
-                    Symbol(name: Self.speakerSymbol(level: level, muted: muted), size: ui(13))
-                        .frame(width: ui(19), alignment: .leading)
-                    Text(muted ? "Muted" : "\(percent)%")
-                        .font(.system(size: ui(13), weight: .semibold).monospacedDigit())
-                        .fixedSize()
-                }
-                .foregroundStyle(.white)
-            } trailing: {
-                LevelBar(value: muted ? 0 : Double(level))
-                    .frame(height: ui(6))
-                    .padding(.leading, ui(4))
-            }
+            levelHUD(
+                symbol: Self.speakerSymbol(level: level, muted: muted),
+                label: muted ? "Muted" : Self.percent(level),
+                value: muted ? 0 : level
+            )
+
+        case .brightness(let level):
+            levelHUD(symbol: level < 0.5 ? "sun.min.fill" : "sun.max.fill", label: Self.percent(level), value: level)
 
         case .charging(let level):
             ears {
@@ -36,6 +29,8 @@ struct HUDView: View {
                     Text("\(level)%")
                         .font(.system(size: ui(13), weight: .semibold).monospacedDigit())
                         .foregroundStyle(Color.islandGreen)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     BatteryGlyph(level: level, tint: .islandGreen, showsBolt: true)
                 }
             }
@@ -52,6 +47,8 @@ struct HUDView: View {
                     Text("\(level)%")
                         .font(.system(size: ui(13), weight: .semibold).monospacedDigit())
                         .foregroundStyle(Color.islandRed)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     BatteryGlyph(level: level, tint: .islandRed)
                 }
             }
@@ -120,6 +117,10 @@ struct HUDView: View {
         }
     }
 
+    private static func percent(_ level: Float) -> String {
+        "\(Int((level * 100).rounded()))%"
+    }
+
     private static func speakerSymbol(level: Float, muted: Bool) -> String {
         if muted { return "speaker.slash.fill" }
         switch level {
@@ -127,6 +128,23 @@ struct HUDView: View {
         case ..<0.34: return "speaker.wave.1.fill"
         case ..<0.67: return "speaker.wave.2.fill"
         default: return "speaker.wave.3.fill"
+        }
+    }
+
+    private func levelHUD(symbol: String, label: String, value: Float) -> some View {
+        ears {
+            HStack(spacing: ui(6)) {
+                Symbol(name: symbol, size: ui(13))
+                    .frame(width: ui(19), alignment: .leading)
+                Text(label)
+                    .font(.system(size: ui(13), weight: .semibold).monospacedDigit())
+                    .fixedSize()
+            }
+            .foregroundStyle(.white)
+        } trailing: {
+            LevelBar(value: Double(value))
+                .frame(height: ui(6))
+                .padding(.leading, ui(4))
         }
     }
 

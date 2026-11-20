@@ -38,15 +38,19 @@ struct IslandRootView: View {
         case .idle:
             Color.clear
         case .compact(.music):
-            CompactMusicView(nowPlaying: model.nowPlaying, ns: ns, notchWidth: model.geometry.notchWidth)
+            CompactMusicView(nowPlaying: model.nowPlaying, ns: ns, notchGap: model.geometry.earGap)
                 .frame(width: size.width, height: size.height)
                 .transition(.islandContent)
         case .compact(.timer):
-            CompactTimerView(timer: model.timer, nowPlaying: nil, ns: ns, notchWidth: model.geometry.notchWidth)
+            CompactTimerView(timer: model.timer, nowPlaying: nil, ns: ns, notchGap: model.geometry.earGap)
                 .frame(width: size.width, height: size.height)
                 .transition(.islandContent)
         case .compact(.musicAndTimer):
-            CompactTimerView(timer: model.timer, nowPlaying: model.nowPlaying, ns: ns, notchWidth: model.geometry.notchWidth)
+            CompactTimerView(timer: model.timer, nowPlaying: model.nowPlaying, ns: ns, notchGap: model.geometry.earGap)
+                .frame(width: size.width, height: size.height)
+                .transition(.islandContent)
+        case .compact(.charging):
+            CompactChargingView(battery: model.battery, notchGap: model.geometry.earGap)
                 .frame(width: size.width, height: size.height)
                 .transition(.islandContent)
         case .hud(let hud):

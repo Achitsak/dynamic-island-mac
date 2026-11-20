@@ -5,10 +5,12 @@ enum LiveActivity: Hashable {
     case music
     case timer
     case musicAndTimer
+    case charging
 }
 
 enum HUD: Equatable {
     case volume(level: Float, muted: Bool)
+    case brightness(level: Float)
     case charging(level: Int)
     case lowBattery(level: Int)
     case bluetooth(name: String, symbol: String, connected: Bool)
@@ -17,6 +19,7 @@ enum HUD: Equatable {
     var kind: String {
         switch self {
         case .volume: "volume"
+        case .brightness: "brightness"
         case .charging: "charging"
         case .lowBattery: "lowBattery"
         case .bluetooth: "bluetooth"
@@ -51,6 +54,7 @@ final class IslandModel {
     let battery = BatteryService()
     let timer = TimerService()
     @ObservationIgnored let volume = VolumeService()
+    @ObservationIgnored let brightness = BrightnessService()
     @ObservationIgnored let bluetooth = BluetoothService()
 
     var geometry = IslandGeometry.placeholder
@@ -62,6 +66,9 @@ final class IslandModel {
     @ObservationIgnored private var hoverTask: Task<Void, Never>?
     @ObservationIgnored private var hudTask: Task<Void, Never>?
     @ObservationIgnored private var musicHideTask: Task<Void, Never>?
+    @ObservationIgnored private var brightnessTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingBrightness: Float?
+    @ObservationIgnored private var brightnessQuietUntil = Date.distantPast
 
     // MARK: Lifecycle
 
@@ -69,6 +76,7 @@ final class IslandModel {
         nowPlaying.onChange = { [weak self] in self?.nowPlayingChanged() }
         battery.onEvent = { [weak self] event in self?.handle(event) }
         volume.onChange = { [weak self] level, muted in self?.volumeChanged(level, muted) }
+        brightness.onChange = { [weak self] level in self?.brightnessChanged(level) }
         bluetooth.onEvent = { [weak self] name, symbol, connected in
             self?.bluetoothChanged(name: name, symbol: symbol, connected: connected)
         }
@@ -80,6 +88,7 @@ final class IslandModel {
         nowPlaying.start()
         battery.start()
         volume.start()
+        brightness.start()
         if settings.showBluetoothHUD { bluetooth.start() }
     }
 
@@ -107,8 +116,13 @@ final class IslandModel {
         case (true, true): return .musicAndTimer
         case (true, false): return .music
         case (false, true): return .timer
-        case (false, false): return nil
+        case (false, false): return showsCharging ? .charging : nil
         }
+    }
+
+    /// Lowest priority: music and the timer take the island when they're active.
+    var showsCharging: Bool {
+        settings.showChargingActivity && battery.isCharging
     }
 
     var showsPlayer: Bool {
@@ -154,11 +168,15 @@ final class IslandModel {
             return CGSize(width: nw, height: nh)
         case .compact(.music):
             return ears(Layout.musicEar)
-        case .compact(.timer), .compact(.musicAndTimer):
+        case .compact(.timer):
             return ears(Layout.timerEar)
+        case .compact(.musicAndTimer):
+            return ears(Layout.musicTimerEar)
+        case .compact(.charging):
+            return ears(Layout.chargingEar)
         case .hud(let hud):
             switch hud {
-            case .volume: return ears(Layout.volumeEar)
+            case .volume, .brightness: return ears(Layout.volumeEar)
             case .charging, .lowBattery: return ears(Layout.batteryEar)
             case .bluetooth: return ears(Layout.bannerEar, extra: Layout.bannerExtra)
             case .timerDone:
@@ -287,12 +305,42 @@ final class IslandModel {
         show(.volume(level: level, muted: muted), for: 1.6)
     }
 
+    private func brightnessChanged(_ level: Float) {
+        guard settings.showBrightnessHUD, Date.now > brightnessQuietUntil else { return }
+        if case .hud(.brightness) = presentation {
+            show(.brightness(level: level), for: 1.6)
+            return
+        }
+        // Wait a beat before popping up: when the system changes the brightness by
+        // itself, the event behind it (power, displays) can be reported just after.
+        pendingBrightness = level
+        guard brightnessTask == nil else { return }
+        brightnessTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, let self else { return }
+            self.brightnessTask = nil
+            if let level = self.pendingBrightness { self.show(.brightness(level: level), for: 1.6) }
+        }
+    }
+
+    /// macOS changes the brightness by itself when switching between battery and power
+    /// (it dims a little on battery) and when displays are connected; that shouldn't
+    /// show up as a brightness change.
+    func ignoreSystemBrightnessChanges() {
+        brightnessQuietUntil = .now + 3
+        brightnessTask?.cancel()
+        brightnessTask = nil
+        if case .hud(.brightness) = presentation { hud = nil }
+    }
+
     private func handle(_ event: BatteryService.Event) {
         switch event {
         case .pluggedIn:
+            ignoreSystemBrightnessChanges()
             guard settings.showChargingHUD else { return }
             show(.charging(level: battery.level), for: 3.2)
         case .unplugged:
+            ignoreSystemBrightnessChanges()
             if case .hud(.charging) = presentation { hud = nil }
         case .low(let level):
             guard settings.showLowBatteryHUD else { return }
@@ -314,6 +362,12 @@ final class IslandModel {
 
             for level: Float in [0.35, 0.45, 0.55, 0.65, 0.75] {
                 self.show(.volume(level: level, muted: false), for: 1.4)
+                await wait(0.3)
+            }
+            await wait(1.8)
+
+            for level: Float in [0.8, 0.7, 0.6, 0.5] {
+                self.show(.brightness(level: level), for: 1.4)
                 await wait(0.3)
             }
             await wait(1.8)
