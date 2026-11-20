@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 extension Notification.Name {
@@ -24,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller = IslandController(model: model)
         model.start()
         refreshStatusItem()
+        enableLaunchAtLoginOnFirstRun()
         if CommandLine.arguments.contains("--demo") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 MainActor.assumeIsolated { self?.playDemo() }
@@ -40,6 +42,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.model.settingsChanged()
             }
         }
+    }
+
+    /// Start at login by default once the app is installed; it can be turned off in Settings.
+    /// Copies run from elsewhere (e.g. a build folder) are left alone.
+    private func enableLaunchAtLoginOnFirstRun() {
+        let key = "didSetUpLaunchAtLogin"
+        guard Bundle.main.bundlePath.hasPrefix("/Applications/"),
+              !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        try? SMAppService.mainApp.register()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
